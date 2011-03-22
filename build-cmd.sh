@@ -7,7 +7,8 @@ set -x
 # make errors fatal
 set -e
 
-FREETYPELIB_SOURCE_DIR=""
+FREETYPE_VERSION="2.3.9"
+FREETYPELIB_SOURCE_DIR="freetype-$FREETYPE_VERSION"
 
 if [ -z "$AUTOBUILD" ] ; then 
     fail
@@ -41,7 +42,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             cp -r include/freetype/* "$stage/include/freetype/"            
         ;;
         "darwin")
-            ./configure --prefix="$stage"
+            CPPFLAGS="-arch i386 -iwithsysroot /Developer/SDKs/MacOSX10.5.sdk" ./configure --prefix="$stage"
             make
             make install
             mv "$stage/include/freetype2/freetype" "$stage/include/freetype"
