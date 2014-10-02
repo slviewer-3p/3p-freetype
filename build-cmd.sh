@@ -7,7 +7,6 @@ set -x
 # make errors fatal
 set -e
 
-FREETYPE_VERSION="2.4.4"
 FREETYPELIB_SOURCE_DIR="freetype"
 
 if [ -z "$AUTOBUILD" ] ; then 
@@ -27,6 +26,15 @@ top="$(pwd)"
 stage="$(pwd)/stage"
 
 [ -f "$stage"/packages/include/zlib/zlib.h ] || fail "You haven't installed packages yet."
+
+# extract APR version into VERSION.txt
+FREETYPE_INCLUDE_DIR="${top}/${FREETYPELIB_SOURCE_DIR}/include/freetype"
+major_version=$(perl -ne 's/#\s*define\s+FREETYPE_MAJOR\s+([\d]+)/$1/ && print' "${FREETYPE_INCLUDE_DIR}/freetype.h")
+minor_version=$(perl -ne 's/#\s*define\s+FREETYPE_MINOR\s+([\d]+)/$1/ && print' "${FREETYPE_INCLUDE_DIR}/freetype.h")
+patch_version=$(perl -ne 's/#\s*define\s+FREETYPE_PATCH\s+([\d]+)/$1/ && print' "${FREETYPE_INCLUDE_DIR}/freetype.h")
+version="${major_version}.${minor_version}.${patch_version}"
+build=${AUTOBUILD_BUILD_ID:=0}
+echo "${version}.${build}" > "${stage}/VERSION.txt"
 
 pushd "$FREETYPELIB_SOURCE_DIR"
     case "$AUTOBUILD_PLATFORM" in
@@ -65,7 +73,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             # sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.6.sdk/
             sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk/
             
-            opts="${TARGET_OPTS:--arch i386 -iwithsysroot $sdk -mmacosx-version-min=10.6}"
+            opts="${TARGET_OPTS:--arch i386 -iwithsysroot $sdk -mmacosx-version-min=10.7}"
 
             # Debug first
             CFLAGS="$opts -gdwarf-2 -O0" \
