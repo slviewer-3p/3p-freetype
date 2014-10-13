@@ -9,7 +9,7 @@ set -e
 
 FREETYPELIB_SOURCE_DIR="freetype"
 
-if [ -z "$AUTOBUILD" ] ; then 
+if [ -z "$AUTOBUILD" ] ; then
     fail
 fi
 
@@ -41,15 +41,15 @@ pushd "$FREETYPELIB_SOURCE_DIR"
 
         "windows")
             load_vsvars
-            
-            build_sln "builds/win32/vc2010/freetype.sln" "LIB Debug|Win32" 
-            build_sln "builds/win32/vc2010/freetype.sln" "LIB Release|Win32" 
+
+            build_sln "builds/win32/vc2010/freetype.sln" "LIB Debug|Win32"
+            build_sln "builds/win32/vc2010/freetype.sln" "LIB Release|Win32"
 
             mkdir -p "$stage/lib/debug"
             mkdir -p "$stage/lib/release"
             cp -a "objs/win32/vc2010/freetype239_D.lib" "$stage/lib/debug/freetype.lib"
             cp -a "objs/win32/vc2010/freetype239.lib" "$stage/lib/release/freetype.lib"
-                
+
             mkdir -p "$stage/include/freetype2/"
             cp -a include/ft2build.h "$stage/include/freetype2/"
             cp -a include/freetype "$stage/include/freetype2/"
@@ -71,8 +71,8 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             # sdk=/Developer/SDKs/MacOSX10.6.sdk/
             # sdk=/Developer/SDKs/MacOSX10.7.sdk/
             # sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.6.sdk/
-            sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.7.sdk/
-            
+            sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/
+
             opts="${TARGET_OPTS:--arch i386 -iwithsysroot $sdk -mmacosx-version-min=10.7}"
 
             # Debug first
@@ -147,7 +147,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
                 unset CPPFLAGS
             else
                 # Incorporate special pre-processing flags
-                export CPPFLAGS="$TARGET_CPPFLAGS" 
+                export CPPFLAGS="$TARGET_CPPFLAGS"
             fi
 
             # Debug first
