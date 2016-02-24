@@ -39,15 +39,12 @@ echo "${version}.${build}" > "${stage}/VERSION.txt"
 pushd "$FREETYPELIB_SOURCE_DIR"
     case "$AUTOBUILD_PLATFORM" in
 
-        "windows")
+        windows*)
             load_vsvars
 
-            build_sln "builds/win32/vc2013/freetype.sln" "LIB Debug|Win32"
-            build_sln "builds/win32/vc2013/freetype.sln" "LIB Release|Win32"
+            build_sln "builds/win32/vc2013/freetype.sln" "LIB Release|$AUTOBUILD_WIN_VSPLATFORM"
 
-            mkdir -p "$stage/lib/debug"
             mkdir -p "$stage/lib/release"
-            cp -a "objs/win32/vc2013/freetype239_D.lib" "$stage/lib/debug/freetype.lib"
             cp -a "objs/win32/vc2013/freetype239.lib" "$stage/lib/release/freetype.lib"
 
             mkdir -p "$stage/include/freetype2/"
