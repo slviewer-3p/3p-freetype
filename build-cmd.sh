@@ -6,6 +6,8 @@ cd "$(dirname "$0")"
 set -x
 # make errors fatal
 set -e
+# complain about unset env variables
+set -u
 
 FREETYPELIB_SOURCE_DIR="freetype"
 
@@ -14,13 +16,18 @@ if [ -z "$AUTOBUILD" ] ; then
 fi
 
 if [ "$OSTYPE" = "cygwin" ] ; then
-    export AUTOBUILD="$(cygpath -u $AUTOBUILD)"
+    autobuild="$(cygpath -u $AUTOBUILD)"
+else
+    autobuild="$AUTOBUILD"
 fi
 
-# load autbuild provided shell functions and variables
+# load autobuild provided shell functions and variables
 set +x
-eval "$("$AUTOBUILD" source_environment)"
+eval "$("$autobuild" source_environment)"
 set -x
+
+# set LL_BUILD and friends
+set_build_variables convenience Release
 
 top="$(pwd)"
 stage="$(pwd)/stage"
@@ -42,17 +49,26 @@ pushd "$FREETYPELIB_SOURCE_DIR"
         windows*)
             load_vsvars
 
-            build_sln "builds/win32/vc2013/freetype.sln" "LIB Release|$AUTOBUILD_WIN_VSPLATFORM"
+            case "$AUTOBUILD_VSVER" in
+                "120")
+                    verdir="vc2013"
+                    ;;
+                *)
+                    fail "Unknown AUTOBUILD_VSVER = '$AUTOBUILD_VSVER'"
+                    ;;
+            esac
+
+            build_sln "builds/win32/$verdir/freetype.sln" "LIB Release|$AUTOBUILD_WIN_VSPLATFORM"
 
             mkdir -p "$stage/lib/release"
-            cp -a "objs/win32/vc2013/freetype239.lib" "$stage/lib/release/freetype.lib"
+            cp -a "objs/win32/$verdir"/freetype*.lib "$stage/lib/release/freetype.lib"
 
             mkdir -p "$stage/include/freetype2/"
             cp -a include/ft2build.h "$stage/include/freetype2/"
             cp -a include/freetype "$stage/include/freetype2/"
         ;;
 
-        "darwin")
+        darwin*)
             # Darwin build environment at Linden is also pre-polluted like Linux
             # and that affects colladadom builds.  Here are some of the env vars
             # to look out for:
@@ -62,39 +78,11 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             # helper                here                prefix                  release
             # repo                  root                run_tests               suffix
 
-            # Select SDK with full path.  This shouldn't have much effect on this
-            # build but adding to establish a consistent pattern.
-            #
-            # sdk=/Developer/SDKs/MacOSX10.6.sdk/
-            # sdk=/Developer/SDKs/MacOSX10.7.sdk/
-            # sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.6.sdk/
-            sdk=/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk/
+            opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD}"
 
-            opts="${TARGET_OPTS:--arch i386 -iwithsysroot $sdk -mmacosx-version-min=10.7}"
-
-            # Debug first
-            CFLAGS="$opts -gdwarf-2 -O0" \
-                CXXFLAGS="$opts -gdwarf-2 -O0" \
-                CPPFLAGS="-I$stage/packages/include/zlib" \
-                LDFLAGS="$opts -Wl,-headerpad_max_install_names -L$stage/packages/lib/debug -Wl,-unexported_symbols_list,$stage/packages/lib/debug/libz_darwin.exp" \
-                ./configure --with-pic \
-                --prefix="$stage" --libdir="$stage"/lib/debug/
-            make
-            make install
-
-            # conditionally run unit tests
-            if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                # make test
-                echo "No tests"
-            fi
-
-            install_name_tool -id "@executable_path/../Resources/libfreetype.6.dylib" "$stage"/lib/debug/libfreetype.6.dylib
-
-            make distclean
-
-            # Release last
-            CFLAGS="$opts -gdwarf-2 -O2" \
-                CXXFLAGS="$opts -gdwarf-2 -O2" \
+            # Release
+            CFLAGS="$opts" \
+                CXXFLAGS="$opts" \
                 CPPFLAGS="-I$stage/packages/include/zlib" \
                 LDFLAGS="$opts -Wl,-headerpad_max_install_names -L$stage/packages/lib/release -Wl,-unexported_symbols_list,$stage/packages/lib/release/libz_darwin.exp" \
                 ./configure --with-pic \
@@ -113,7 +101,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             make distclean
         ;;
 
-        "linux")
+        linux*)
             # Linux build environment at Linden comes pre-polluted with stuff that can
             # seriously damage 3rd-party builds.  Environmental garbage you can expect
             # includes:
@@ -129,17 +117,17 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             #
             # unset DISTCC_HOSTS CC CXX CFLAGS CPPFLAGS CXXFLAGS
 
-            # Prefer gcc-4.6 if available.
-            if [ -x /usr/bin/gcc-4.6 -a -x /usr/bin/g++-4.6 ]; then
-                export CC=/usr/bin/gcc-4.6
-                export CXX=/usr/bin/g++-4.6
-            fi
+##          # Prefer gcc-4.6 if available.
+##          if [ -x /usr/bin/gcc-4.6 -a -x /usr/bin/g++-4.6 ]; then
+##              export CC=/usr/bin/gcc-4.6
+##              export CXX=/usr/bin/g++-4.6
+##          fi
 
-            # Default target to 32-bit
-            opts="${TARGET_OPTS:--m32}"
+            # Default target per AUTOBUILD_ADDRSIZE
+            opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD}"
 
             # Handle any deliberate platform targeting
-            if [ -z "$TARGET_CPPFLAGS" ]; then
+            if [ -z "${TARGET_CPPFLAGS:-}" ]; then
                 # Remove sysroot contamination from build environment
                 unset CPPFLAGS
             else
@@ -147,27 +135,9 @@ pushd "$FREETYPELIB_SOURCE_DIR"
                 export CPPFLAGS="$TARGET_CPPFLAGS"
             fi
 
-            # Debug first
-            CFLAGS="$opts -g -O0" \
-                CXXFLAGS="$opts -g -O0" \
-                CPPFLAGS="-I$stage/packages/include/zlib" \
-                LDFLAGS="$opts -L$stage/packages/lib/debug -Wl,--exclude-libs,libz" \
-                ./configure --with-pic \
-                --prefix="$stage" --libdir="$stage"/lib/debug/
-            make
-            make install
-
-            # conditionally run unit tests
-            if [ "${DISABLE_UNIT_TESTS:-0}" = "0" ]; then
-                # make test
-                echo "No tests"
-            fi
-
-            make distclean
-
-            # Release last
-            CFLAGS="$opts -g -O2" \
-                CXXFLAGS="$opts -g -O2" \
+            # Release
+            CFLAGS="$opts" \
+                CXXFLAGS="$opts" \
                 CPPFLAGS="-I$stage/packages/include/zlib" \
                 LDFLAGS="$opts -L$stage/packages/lib/release -Wl,--exclude-libs,libz" \
                 ./configure --with-pic \
@@ -192,4 +162,3 @@ mkdir -p "$stage"/docs/freetype/
 cp -a README.Linden "$stage"/docs/freetype/
 
 pass
-
