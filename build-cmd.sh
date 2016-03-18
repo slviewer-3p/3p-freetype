@@ -64,7 +64,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             cp -a "objs/win32/$verdir"/freetype*.lib "$stage/lib/release/freetype.lib"
 
             mkdir -p "$stage/include/freetype2/"
-            cp -a include/ft2build.h "$stage/include/freetype2/"
+            cp -a include/ft2build.h "$stage/include/"
             cp -a include/freetype "$stage/include/freetype2/"
         ;;
 
