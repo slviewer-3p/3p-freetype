@@ -21,13 +21,13 @@ else
     autobuild="$AUTOBUILD"
 fi
 
+top="$(pwd)"
+stage="$(pwd)/stage"
+
 # load autobuild provided shell functions and variables
 source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
-
-top="$(pwd)"
-stage="$(pwd)/stage"
 
 [ -f "$stage"/packages/include/zlib/zlib.h ] || fail "You haven't installed packages yet."
 
