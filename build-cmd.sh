@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 cd "$(dirname "$0")"
 
 # turn on verbose debugging output for parabuild logs.
-set -x
+exec 4>&1; export BASH_XTRACEFD=4; set -x
 # make errors fatal
 set -e
 # complain about unset env variables
@@ -12,7 +12,7 @@ set -u
 FREETYPELIB_SOURCE_DIR="freetype"
 
 if [ -z "$AUTOBUILD" ] ; then
-    fail
+    exit 1
 fi
 
 if [ "$OSTYPE" = "cygwin" ] ; then
@@ -22,12 +22,9 @@ else
 fi
 
 # load autobuild provided shell functions and variables
-set +x
-eval "$("$autobuild" source_environment)"
-set -x
-
-# set LL_BUILD and friends
-set_build_variables convenience Release
+source_environment_tempfile="$stage/source_environment.sh"
+"$autobuild" source_environment > "$source_environment_tempfile"
+. "$source_environment_tempfile"
 
 top="$(pwd)"
 stage="$(pwd)/stage"
@@ -54,7 +51,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
                     verdir="vc2013"
                     ;;
                 *)
-                    fail "Unknown AUTOBUILD_VSVER = '$AUTOBUILD_VSVER'"
+                    echo "Unknown AUTOBUILD_VSVER = '$AUTOBUILD_VSVER'" 1>&2 ; exit 1
                     ;;
             esac
 
@@ -78,7 +75,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
             # helper                here                prefix                  release
             # repo                  root                run_tests               suffix
 
-            opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD}"
+            opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
 
             # Release
             CFLAGS="$opts" \
@@ -124,7 +121,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
 ##          fi
 
             # Default target per AUTOBUILD_ADDRSIZE
-            opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD}"
+            opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE}"
 
             # Handle any deliberate platform targeting
             if [ -z "${TARGET_CPPFLAGS:-}" ]; then
@@ -160,5 +157,3 @@ popd
 
 mkdir -p "$stage"/docs/freetype/
 cp -a README.Linden "$stage"/docs/freetype/
-
-pass
