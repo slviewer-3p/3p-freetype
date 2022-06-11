@@ -1,1 +1,3 @@
 config.mk
+stage/
+*.bz2
