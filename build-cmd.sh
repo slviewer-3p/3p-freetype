@@ -105,27 +105,6 @@ pushd "$FREETYPELIB_SOURCE_DIR"
         ;;
 
         linux*)
-            # Linux build environment at Linden comes pre-polluted with stuff that can
-            # seriously damage 3rd-party builds.  Environmental garbage you can expect
-            # includes:
-            #
-            #    DISTCC_POTENTIAL_HOSTS     arch           root        CXXFLAGS
-            #    DISTCC_LOCATION            top            branch      CC
-            #    DISTCC_HOSTS               build_name     suffix      CXX
-            #    LSDISTCC_ARGS              repo           prefix      CFLAGS
-            #    cxx_version                AUTOBUILD      SIGN        CPPFLAGS
-            #
-            # So, clear out bits that shouldn't affect our configure-directed build
-            # but which do nonetheless.
-            #
-            # unset DISTCC_HOSTS CC CXX CFLAGS CPPFLAGS CXXFLAGS
-
-##          # Prefer gcc-4.6 if available.
-##          if [ -x /usr/bin/gcc-4.6 -a -x /usr/bin/g++-4.6 ]; then
-##              export CC=/usr/bin/gcc-4.6
-##              export CXX=/usr/bin/g++-4.6
-##          fi
-
             # Default target per AUTOBUILD_ADDRSIZE
             opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE}"
 
@@ -145,7 +124,7 @@ pushd "$FREETYPELIB_SOURCE_DIR"
                 LDFLAGS="$opts -L$stage/packages/lib/release -Wl,--exclude-libs,libz" \
                 ./configure --with-pic --with-png=no --with-brotli=no\
                 --prefix="$stage" --libdir="$stage"/lib/release/
-            make
+            make -j `nproc`
             make install
 
             # conditionally run unit tests
